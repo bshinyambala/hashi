@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-var store = CreateJobStore()
+var JStore = CreateJobStore()
 
 var waitGroup sync.WaitGroup
 
@@ -63,7 +63,7 @@ func HashAPI(res http.ResponseWriter, req *http.Request) {
 			http.Error(res, "Bad Request. Password is empty or missing.", http.StatusBadRequest)
 			return
 		}
-		jobID := store.CreateJob()
+		jobID := JStore.CreateJob()
 		fmt.Fprintf(res, strconv.Itoa(int(jobID)))
 
 		// join wait group
@@ -73,7 +73,7 @@ func HashAPI(res http.ResponseWriter, req *http.Request) {
 			time.Sleep(time.Second * time.Duration(5))
 
 			hash := GenerateHash(password)
-			store.RecordHash(jobID, hash, int32(time.Since(start).Seconds()*1000))
+			JStore.RecordHash(jobID, hash, int32(time.Since(start).Seconds()*1000))
 		}()
 	case "GET":
 
@@ -92,7 +92,7 @@ func HashAPI(res http.ResponseWriter, req *http.Request) {
 		}
 
 		// read the harsh and respond accordingly
-		hash, ok := store.GetHash(jobID)
+		hash, ok := JStore.RetrieveHash(jobID)
 		if !ok {
 			http.Error(res, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 			return
@@ -107,7 +107,7 @@ func HashAPI(res http.ResponseWriter, req *http.Request) {
 func StatsAPI(res http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	case "GET":
-		total, average := store.GetStats()
+		total, average := JStore.GetStats()
 		stat := stats{Total: total, Average: average}
 		res.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(res).Encode(stat)
@@ -120,15 +120,15 @@ func StatsAPI(res http.ResponseWriter, req *http.Request) {
 /*JobStore struct*/
 type JobStore struct {
 	sync.RWMutex
-	jobs    uint64
-	values  map[uint64]string
-	average int32
+	jobCounter uint64
+	values     map[uint64]string
+	average    int32
 }
 
 /*CreateJobStore constructor */
 func CreateJobStore() *JobStore {
 	store := new(JobStore)
-	store.jobs = 0
+	store.jobCounter = 0
 	store.values = make(map[uint64]string)
 	return store
 }
@@ -138,13 +138,13 @@ func (store *JobStore) CreateJob() uint64 {
 	//TODO: Not sure if there is need to lock
 	// the store here if I'm using atomic counters
 	// not sure I quite understand this yet. Taking my chances..
-	atomic.AddUint64(&store.jobs, 1)
-	return store.jobs
+	atomic.AddUint64(&store.jobCounter, 1)
+	return atomic.LoadUint64(&store.jobCounter)
 
 }
 
-//GetHash retrieve job id's hash value
-func (store *JobStore) GetHash(id uint64) (string, bool) {
+//RetrieveHash retrieve job id's hash value
+func (store *JobStore) RetrieveHash(id uint64) (string, bool) {
 	store.RLock()
 	defer store.RUnlock()
 	hash, ok := store.values[id]
