@@ -21,8 +21,8 @@ var store = CreateJobStore()
 var waitGroup sync.WaitGroup
 
 func main() {
-	server := &http.Server{Addr: ":8081"}
-	fmt.Println("Starting server on :8081")
+	server := &http.Server{Addr: ":8080"}
+	fmt.Println("Starting server on :8080")
 
 	http.HandleFunc("/", HashAPI)
 	http.HandleFunc("/stats", StatsAPI)
