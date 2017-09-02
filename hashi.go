@@ -94,7 +94,7 @@ func HashAPI(res http.ResponseWriter, req *http.Request) {
 		// read the harsh and respond accordingly
 		hash, ok := JStore.RetrieveHash(jobID)
 		if !ok {
-			http.Error(res, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			http.Error(res, "Could not find the job", http.StatusNotFound)
 			return
 		}
 		fmt.Fprintf(res, hash)
